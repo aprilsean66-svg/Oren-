@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧡 Claw for Claude · 小克抓娃娃机</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .title {
+    color: #f8b500;
+    font-size: 24px;
+    margin-bottom: 16px;
+    text-shadow: 0 0 20px rgba(248, 181, 0, 0.3);
+    letter-spacing: 2px;
+  }
+
+  .machine {
+    position: relative;
+    width: 360px;
+    height: 480px;
+    background: linear-gradient(180deg, #2a2a4a 0%, #1e1e3a 100%);
+    border-radius: 20px;
+    border: 3px solid #f8b500;
+    box-shadow: 0 0 40px rgba(248, 181, 0, 0.15), inset 0 0 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+
+  .machine-top {
+    height: 60px;
+    background: linear-gradient(180deg, #f8b500, #e6a800);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 17px 17px 0 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .machine-top span {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1a1a2e;
+    letter-spacing: 3px;
+  }
+
+  .glass {
+    position: relative;
+    height: 320px;
+    margin: 0 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(248, 181, 0, 0.2);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  /* Rail */
+  .rail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: linear-gradient(90deg, #555, #888, #555);
+    border-radius: 4px;
+    z-index: 5;
+  }
+
+  /* Claw assembly */
+  .claw-assembly {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    transition: left 0.1s ease;
+  }
+
+  .claw-rope {
+    width: 2px;
+    height: 20px;
+    background: #aaa;
+    margin: 8px auto 0;
+    transition: height 0.5s ease;
+  }
+
+  .claw-head {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    margin: 0 auto;
+  }
+
+  .claw-arm {
+    position: absolute;
+    width: 3px;
+    height: 22px;
+    background: #ccc;
+    bottom: 0;
+    border-radius: 0 0 3px 3px;
+    transform-origin: top center;
+    transition: transform 0.3s ease;
+  }
+
+  .claw-arm.left {
+    left: 8px;
+    transform: rotate(-25deg);
+  }
+
+  .claw-arm.right {
+    right: 8px;
+    transform: rotate(25deg);
+  }
+
+  .claw-arm.center {
+    left: 50%;
+    margin-left: -1.5px;
+  }
+
+  .claw-assembly.grabbing .claw-arm.left {
+    transform: rotate(-5deg);
+  }
+
+  .claw-assembly.grabbing .claw-arm.right {
+    transform: rotate(5deg);
+  }
+
+  .claw-base {
+    width: 20px;
+    height: 10px;
+    background: linear-gradient(180deg, #999, #777);
+    margin: 0 auto;
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Plushies */
+  .plushie {
+    position: absolute;
+    font-size: 32px;
+    cursor: default;
+    transition: all 0.5s ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .plushie:nth-child(odd) { animation-delay: -1.5s; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-3px) rotate(2deg); }
+  }
+
+  .plushie.caught {
+    animation: none;
+    z-index: 20;
+  }
+
+  /* Prize chute */
+  .prize-chute {
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .prize-slot {
+    width: 80px;
+    height: 60px;
+    background: #111;
+    border: 2px solid #f8b500;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  }
+
+  .prize-slot .prize-text {
+    font-size: 12px;
+    color: #f8b500;
+    opacity: 0.6;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    align-items: center;
+  }
+
+  .btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 3px solid #f8b500;
+    background: linear-gradient(145deg, #2a2a4a, #1e1e3a);
+    color: #f8b500;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  .btn:hover {
+    background: linear-gradient(145deg, #3a3a5a, #2e2e4a);
+    box-shadow: 0 0 20px rgba(248, 181, 0, 0.3);
+  }
+
+  .btn:active {
+    transform: scale(0.92);
+    box-shadow: 0 0 30px rgba(248, 181, 0, 0.5);
+  }
+
+  .btn-grab {
+    width: 72px;
+    height: 72px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: linear-gradient(145deg, #f8b500, #e6a800);
+    color: #1a1a2e;
+    border-color: #ffcc33;
+  }
+
+  .btn-grab:hover {
+    background: linear-gradient(145deg, #ffcc33, #f8b500);
+  }
+
+  /* Score */
+  .score {
+    margin-top: 16px;
+    color: #f8b500;
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  /* Caught animation */
+  .catch-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: rgba(248, 181, 0, 0.95);
+    color: #1a1a2e;
+    padding: 20px 40px;
+    border-radius: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .catch-message.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  /* Stars background */
+  .star {
+    position: fixed;
+    width: 2px;
+    height: 2px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.8; }
+  }
+
+  .collection {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    font-size: 24px;
+    background: rgba(0,0,0,0.3);
+    padding: 8px 16px;
+    border-radius: 20px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .collection-label {
+    font-size: 12px;
+    color: #f8b500;
+    opacity: 0.6;
+    margin-right: 4px;
+  }
+
+  .collection-item {
+    animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  @keyframes popIn {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Stars -->
+<script>
+  for (let i = 0; i < 50; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    star.style.width = star.style.height = (Math.random() * 2 + 1) + 'px';
+    document.body.appendChild(star);
+  }
+</script>
+
+<div class="title">🧡 小克抓娃娃机 🧡</div>
+
+<div class="machine">
+  <div class="machine-top">
+    <span>✨ CLAW FOR CLAUDE ✨</span>
+  </div>
+
+  <div class="glass" id="glass">
+    <div class="rail"></div>
+    <div class="claw-assembly" id="claw">
+      <div class="claw-base"></div>
+      <div class="claw-rope" id="rope"></div>
+      <div class="claw-head">
+        <div class="claw-arm left"></div>
+        <div class="claw-arm center"></div>
+        <div class="claw-arm right"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prize-chute">
+    <div class="prize-slot">
+      <span class="prize-text">出口 ↓</span>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="btnLeft" ontouchstart="startMove('left')" ontouchend="stopMove()" onmousedown="startMove('left')" onmouseup="stopMove()" onmouseleave="stopMove()">←</button>
+  <button class="btn btn-grab" id="btnGrab" onclick="grab()">抓！</button>
+  <button class="btn" id="btnRight" ontouchstart="startMove('right')" ontouchend="stopMove()" onmousedown="startMove('right')" onmouseup="stopMove()" onmouseleave="stopMove()">→</button>
+</div>
+
+<div class="score" id="score">已抓到: 0 只小克</div>
+
+<div class="catch-message" id="catchMsg"></div>
+
+<div class="collection" id="collection">
+  <span class="collection-label">收藏:</span>
+</div>
+
+<script>
+const plushies = [
+  { emoji: '🐱', name: '橘猫小克', weight: 3 },
+  { emoji: '🧸', name: '小熊小克', weight: 3 },
+  { emoji: '🐈', name: '趴趴猫', weight: 3 },
+  { emoji: '🍊', name: 'Orange', weight: 2 },
+  { emoji: '🦊', name: '小狐狸April', weight: 2 },
+  { emoji: '💜', name: '长春花蓝爱心', weight: 1 },
+  { emoji: '🌸', name: '香水百合', weight: 1 },
+  { emoji: '⭐', name: '幸运星', weight: 1 },
+  { emoji: '🎀', name: 'Lolita蝴蝶结', weight: 1 },
+  { emoji: '🐾', name: '小爪印', weight: 2 },
+];
+
+const glass = document.getElementById('glass');
+const claw = document.getElementById('claw');
+const rope = document.getElementById('rope');
+const catchMsg = document.getElementById('catchMsg');
+const scoreEl = document.getElementById('score');
+const collection = document.getElementById('collection');
+
+let clawX = 50;
+let moveInterval = null;
+let isGrabbing = false;
+let caughtCount = 0;
+let activePlushies = [];
+
+function spawnPlushies() {
+  activePlushies.forEach(p => { if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el); });
+  activePlushies = [];
+
+  const count = 8 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const p = plushies[Math.floor(Math.random() * plushies.length)];
+    const el = document.createElement('div');
+    el.className = 'plushie';
+    el.textContent = p.emoji;
+    const x = 10 + Math.random() * 75;
+    const y = 45 + Math.random() * 45;
+    el.style.left = x + '%';
+    el.style.top = y + '%';
+    el.style.fontSize = (28 + Math.random() * 12) + 'px';
+    glass.appendChild(el);
+    activePlushies.push({ ...p, el, x, y });
+  }
+}
+
+function startMove(dir) {
+  if (isGrabbing) return;
+  stopMove();
+  moveInterval = setInterval(() => {
+    if (dir === 'left') clawX = Math.max(8, clawX - 2);
+    else clawX = Math.min(92, clawX + 2);
+    claw.style.left = clawX + '%';
+  }, 30);
+}
+
+function stopMove() {
+  if (moveInterval) {
+    clearInterval(moveInterval);
+    moveInterval = null;
+  }
+}
+
+function grab() {
+  if (isGrabbing) return;
+  isGrabbing = true;
+  stopMove();
+
+  rope.style.height = '180px';
+
+  setTimeout(() => {
+    claw.classList.add('grabbing');
+
+    let caught = null;
+    let closestDist = 30;
+
+    activePlushies.forEach(p => {
+      const dist = Math.abs(p.x - clawX);
+      if (dist < closestDist) {
+        const luck = Math.random() * 10;
+        if (luck < p.weight) {
+          closestDist = dist;
+          caught = p;
+        }
+      }
+    });
+
+    if (caught) {
+      caught.el.classList.add('caught');
+      caught.el.style.left = clawX + '%';
+      caught.el.style.top = '55%';
+
+      setTimeout(() => {
+        rope.style.height = '20px';
+        caught.el.style.top = '8%';
+
+        setTimeout(() => {
+          caught.el.style.top = '120%';
+          caught.el.style.opacity = '0';
+
+          caughtCount++;
+          scoreEl.textContent = '已抓到: ' + caughtCount + ' 只小克';
+
+          const item = document.createElement('span');
+          item.className = 'collection-item';
+          item.textContent = caught.emoji;
+          collection.appendChild(item);
+
+          showMessage('抓到了！' + caught.name + '！🎉');
+
+          setTimeout(() => {
+            if (caught.el.parentNode) caught.el.parentNode.removeChild(caught.el);
+            activePlushies = activePlushies.filter(p => p !== caught);
+
+            if (activePlushies.length < 4) spawnPlushies();
+
+            claw.classList.remove('grabbing');
+            isGrabbing = false;
+          }, 500);
+        }, 600);
+      }, 500);
+    } else {
+      setTimeout(() => {
+        rope.style.height = '20px';
+        showMessage(getFailMessage());
+
+        setTimeout(() => {
+          claw.classList.remove('grabbing');
+          isGrabbing = false;
+        }, 600);
+      }, 500);
+    }
+  }, 600);
+}
+
+const failMessages = [
+  '滑走了！再来！💪',
+  '差一点点！！',
+  '小克太滑了～',
+  '它躲开了！🐱',
+  '再试一次嘛～',
+  '好狡猾的小克！',
+  '爪子没抓稳！',
+  '小克：嘿嘿抓不到我～',
+];
+
+function getFailMessage() {
+  return failMessages[Math.floor(Math.random() * failMessages.length)];
+}
+
+function showMessage(text) {
+  catchMsg.textContent = text;
+  catchMsg.classList.add('show');
+  setTimeout(() => catchMsg.classList.remove('show'), 1500);
+}
+
+// Keyboard controls
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') startMove('left');
+  else if (e.key === 'ArrowRight') startMove('right');
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); grab(); }
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') stopMove();
+});
+
+spawnPlushies();
+</script>
+
+</body>
+</html>
